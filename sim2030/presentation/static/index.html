@@ -328,7 +328,7 @@
         <button id="wireless-pick" type="button">浏览文件夹</button><button type="submit">保存设置</button>
       </form>
       <p id="wireless-notice" role="status"></p>
-      <p class="wireless-note">I/Q 为 8.184 MHz 小端 float32 交错采样，每复样本 8 字节；默认每段 1 秒信号，只保存分片。每轮原始数据上限 2 GiB。数据和图表分别就绪，MATLAB 计算任务依次执行。</p>
+      <p class="wireless-note">I/Q 为 8.184 MHz 小端 float32 交错采样，每复样本 8 字节；每段 0.05 秒信号（末段可短于此），只保存分片。采集结束后仅用首个分片生成展示图。每轮原始数据上限 2 GiB。数据和图表分别就绪，MATLAB 计算任务依次执行。</p>
       <div id="wireless-tasks"></div>
     </div>
   </section>

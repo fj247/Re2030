@@ -19,7 +19,7 @@ from sim2030.presentation import views as presentation_views
 from sim2030.records import RunReader
 from sim2030.scenario import load_scenario
 from sim2030.goose_capture import SAMPLES
-from sim2030.wireless_capture import CaptureManager
+from sim2030.wireless_capture import CaptureManager, FILES
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -167,7 +167,7 @@ class PresentationServer:
                 if len(parts) == 7 and parts[5] == "files" and method == "GET":
                     name = parts[6]
                     # Raw IQ stays on disk; the browser receives only bounded JSON/images.
-                    if name not in {"manifest.json", "analysis.json", "overview.png", "presence.png", "correlation.png"}:
+                    if name not in FILES:
                         raise ValueError("文件不允许由页面读取")
                     path = self.capture.file(task_id, name)
                     if not path.is_file():

@@ -79,6 +79,30 @@ class CaptureTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.manager.file(task_id, '../../request.json')
 
+    def test_separate_plots_are_published_and_history_images_remain_accessible(self):
+        task_id = self.manager.start('run-plots')
+        self.assertTrue(self.entered.wait(2))
+        self.finish(task_id)
+        detector = Path(self.manager.task(task_id)['directory']) / 'detector'
+        names = ['i_envelope.png', 'q_envelope.png', 'mean_psd.png',
+                 'prn_search.png', 'correlation.png', 'overview.png', 'presence.png']
+        server = PresentationServer.__new__(PresentationServer)
+        server.capture = self.manager
+        for name in names:
+            (detector / name).write_bytes(b'published-image')
+            self.assertEqual(self.manager.file(task_id, name).read_bytes(), b'published-image')
+            status, body, headers = server.handle_request('GET', f'/api/wireless/tasks/{task_id}/files/{name}')
+            self.assertEqual(status, 200)
+            self.assertEqual(body['__bytes__'], b'published-image')
+            self.assertEqual(headers['Content-Type'], 'image/png')
+        (detector / 'mean_psd.png.partial.png').write_bytes(b'unfinished')
+        self.assertEqual(server.handle_request('GET',
+            f'/api/wireless/tasks/{task_id}/files/segment_000001.iq.f32')[0], 400)
+        task = self.manager.snapshot()['tasks'][0]
+        self.assertEqual(task['plots'], names)
+        with self.assertRaises(ValueError):
+            self.manager.file(task_id, 'mean_psd.png.partial.png')
+
     def test_rebuild_stops_generation_and_does_not_discard_history(self):
         task_id = self.manager.start('run-1')
         self.assertTrue(self.entered.wait(2))

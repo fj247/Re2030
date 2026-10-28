@@ -17,7 +17,9 @@ import uuid
 
 MATLAB_SOURCE = Path(__file__).resolve().parents[1] / 'matlab' / 'beidou_b1i'
 WRITING = {'queued', 'initializing', 'generating', 'stopping', 'finalizing'}
-FILES = {'manifest.json', 'analysis.json', 'overview.png', 'presence.png', 'correlation.png'}
+PLOTS = ('i_envelope.png', 'q_envelope.png', 'mean_psd.png', 'prn_search.png',
+         'correlation.png', 'overview.png', 'presence.png')
+FILES = {'manifest.json', 'analysis.json', *PLOTS}
 
 
 def read_json(path, default=None):
@@ -333,7 +335,7 @@ class CaptureManager:
                     'sample_count': source.get('sample_count', progress.get('sampleCount', 0)),
                     'signal_seconds': source.get('signal_seconds', progress.get('signalSeconds', 0)),
                     'limit': read_json(folder / 'limit.json'),
-                    'plots': [name for name in ('overview.png', 'presence.png', 'correlation.png') if (folder / 'detector' / name).is_file()],
+                    'plots': [name for name in PLOTS if (folder / 'detector' / name).is_file()],
                     'analysis_report': read_json(folder / 'detector/analysis.json')})
             return {'settings': dict(self.settings), 'tasks': tasks, 'busy': self.busy(),
                     'storage_limit_bytes': 2 * 1024**3}

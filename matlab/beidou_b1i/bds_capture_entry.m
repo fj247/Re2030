@@ -5,6 +5,7 @@ try
     cfg=bds_default_config();
     % Plan only the bounded storage horizon; do not precompute an unrelated hour.
     cfg.durationSeconds=min(60,ceil(r.maxBytes/(8*cfg.sampleRateHz))+1);
+    cfg.segmentSeconds=0.05; % Storage boundary only; waveform state stays continuous.
     cfg.keepFullFile=false; cfg.verifyFullFile=false;
     cfg.autoOverview=false; cfg.overviewVisible=false;
     cfg.outputDirectory=fullfile(r.taskDirectory,'private');
