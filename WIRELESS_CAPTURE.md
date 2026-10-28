@@ -17,7 +17,7 @@
 6. 点击“结束攻击”后停止继续生成；程序完成最后一片、校验和索引，然后排队分析。检测面板也有单独“请求停止采集”按钮，只停止采集，不更改已在进行的授时演示攻击。
 7. 点“打开本轮文件夹”可在运行 Python 的 Windows 电脑上打开检测目录。原始 I/Q 不通过浏览器传送；图像和小型 JSON 可在面板查看。
 
-检测默认关闭，不启用时无需 MATLAB。启用时如果路径、MATLAB 或磁盘预检失败，本轮带采集的攻击不会被静默启动。进程启动、许可或运行失败会显示错误，详细日志在本轮检测目录的上级 `generation.log` / `analysis.log`。
+检测默认关闭，不启用时无需 MATLAB。启用时如果路径、MATLAB 或磁盘预检失败，本轮带采集的攻击不会被静默启动。进程启动、许可或运行失败会显示错误，详细日志在本轮检测目录的上级 `generation.log` / `analysis.log`，由 MATLAB 原生 `-logfile` 写入；启动器输出另外保存在 `generation_launcher.log` / `analysis_launcher.log`。Windows 调用带 `-wait`，并固定启动及脚本工作目录，避免当前目录中的旧函数遮蔽接入版本。
 
 ## 时间和生命周期
 
@@ -90,3 +90,9 @@ python -m unittest tests.test_wireless_capture -v
 python -m unittest discover -s tests -t . -v
 node --test tests/*.cjs
 ```
+
+## 启动失败诊断
+
+面板的“已请求停止”只是控制请求，不代表 MATLAB 已完成退出；执行阶段另行显示是否已经进入 MATLAB 接入入口。每轮原生 MATLAB 日志包含版本、实际入口和生成器路径，以及完整错误堆栈。入口脚本还会写入 `generation_entered.json` 和（出错时）`generation_launch_error.json`。
+
+如果日志只有 `MATLAB error Exit Status`，请同时查看 `generation_launcher.log`，并确认是否存在入口标记。没有入口标记时不要把零样本解释为波形计算完成，也不能据此确定是许可还是环境问题。更新 Python 接入代码后必须重启 Python 服务，再开始新任务；旧任务的日志不会被新代码补写。

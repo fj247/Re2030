@@ -156,10 +156,43 @@ class CaptureManager:
 
     def _invoke(self, task, entry, log_name):
         folder = Path(task['directory'])
-        command = f"addpath('{matlab_quote(MATLAB_SOURCE)}'); {entry}('{matlab_quote(folder / 'request.json')}');"
-        with (folder / log_name).open('wb') as log:
-            process = subprocess.Popen([task['matlab'], '-batch', command], stdout=log, stderr=subprocess.STDOUT)
-            return process.wait()
+        if entry not in {'bds_capture_entry', 'bds_capture_analyze'}:
+            raise ValueError('未知 MATLAB 接入入口')
+        phase = Path(log_name).stem
+        script = folder / (phase + '_launch.m')
+        marker = folder / (phase + '_entered.json')
+        error_file = folder / (phase + '_launch_error.json')
+        script.write_text(
+            "try\n"
+            f"cd('{matlab_quote(MATLAB_SOURCE)}');\n"
+            f"addpath('{matlab_quote(MATLAB_SOURCE)}','-begin');\n"
+            "fprintf('MATLAB version: %s\\n',version);\n"
+            f"fprintf('Capture entry: %s\\n',which('{entry}'));\n"
+            "fprintf('Generator: %s\\n',which('bds_generate'));\n"
+            f"bds_capture_json('{matlab_quote(marker)}',struct('entered',true));\n"
+            f"{entry}('{matlab_quote(folder / 'request.json')}');\n"
+            "catch err\n"
+            "fprintf(2,'%s\\n',getReport(err,'extended','hyperlinks','off'));\n"
+            "try\n"
+            f"bds_capture_json('{matlab_quote(error_file)}',struct('message',err.message,'identifier',err.identifier));\n"
+            "catch\nend\nexit(1);\nend\n", encoding='utf-8')
+        # MATLAB's Windows launcher may not forward its complete diagnostics to
+        # inherited stdout. Keep its own log and a separate launcher log.
+        arguments = [task['matlab']]
+        if sys.platform == 'win32':
+            arguments.append('-wait')
+        arguments += ['-sd', str(MATLAB_SOURCE), '-logfile', str(folder / log_name),
+                      '-batch', f"run('{matlab_quote(script)}');"]
+        with (folder / (phase + '_launcher.log')).open('wb') as log:
+            process = subprocess.Popen(arguments, cwd=str(MATLAB_SOURCE), stdout=log, stderr=subprocess.STDOUT)
+            with self.lock:
+                task['process_id'] = process.pid
+                self._save()
+            code = process.wait()
+        with self.lock:
+            task['exit_code'] = code
+            self._save()
+        return code
 
     def _generate(self, task):
         try:
@@ -174,8 +207,8 @@ class CaptureManager:
                 exit_code = self._invoke(task, 'bds_capture_entry', 'generation.log')
             result = read_json(Path(task['directory'], 'generated.json'))
             if exit_code != 0 or not result:
-                error = read_json(Path(task['directory'], 'generation_error.json'), {})
-                raise ValueError(error.get('message', 'MATLAB 未正常返回；请查看生成日志'))
+                error = read_json(Path(task['directory'], 'generation_error.json'), {}) or read_json(Path(task['directory'], 'generation_launch_error.json'), {})
+                raise ValueError(error.get('message') or f'MATLAB 退出码 {exit_code}，未获得完整生成结果；请查看 generation.log 和 generation_launcher.log')
             with self.lock:
                 task['phase'] = 'finalizing'
                 self._save()
@@ -293,6 +326,8 @@ class CaptureManager:
                                   'ready': source['data_ready'] and not path.name.endswith('.partial')})
                 tasks.append({k: source.get(k) for k in ('id', 'run_id', 'created_at', 'finished_at', 'stop_requested_at', 'data_ready', 'analysis', 'error', 'analysis_error', 'wall_seconds')} | {
                     'phase': phase, 'directory': str(folder / 'detector'), 'files': files,
+                    'stage_detail': ('MATLAB 已进入接入入口；' + {'initializing':'初始化／首块计算尚未完成', 'generating':'正在生成样本', 'finalizing':'正在关闭文件和校验'}.get(progress.get('phase'), '尚未报告首块样本')) if (folder / 'generation_entered.json').is_file() else ('等待 MATLAB 启动并进入接入入口' if source['phase'] in WRITING else '入口执行记录不可用'),
+                    'exit_code': source.get('exit_code'),
                     'wall_seconds': source.get('wall_seconds', time.monotonic()-source['started_monotonic'] if source['phase'] in WRITING else None),
                     'bytes': sum(f['bytes'] for f in files),
                     'sample_count': source.get('sample_count', progress.get('sampleCount', 0)),

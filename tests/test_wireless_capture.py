@@ -100,6 +100,31 @@ class CaptureTests(unittest.TestCase):
         wait_for(lambda: self.manager.task(task_id)['phase'] == 'failed')
         self.assertFalse(self.manager.task(task_id)['data_ready'])
 
+    def test_windows_launcher_waits_and_keeps_native_diagnostics(self):
+        folder = self.root / 'launch-test'
+        folder.mkdir()
+        source = self.root / "source's folder"
+        source.mkdir()
+        task = {'directory':str(folder), 'matlab':sys.executable}
+        with patch('sim2030.wireless_capture.MATLAB_SOURCE', source), \
+                patch('sim2030.wireless_capture.sys.platform', 'win32'), \
+                patch('sim2030.wireless_capture.subprocess.Popen') as popen:
+            popen.return_value.pid = 77
+            popen.return_value.wait.return_value = 1
+            code = CaptureManager._invoke(self.manager, task, 'bds_capture_entry', 'generation.log')
+        self.assertEqual(code, 1)
+        args = popen.call_args.args[0]
+        self.assertIn('-wait', args)
+        self.assertEqual(args[args.index('-logfile')+1], str(folder / 'generation.log'))
+        self.assertEqual(popen.call_args.kwargs['cwd'], str(source))
+        script = (folder / 'generation_launch.m').read_text()
+        self.assertIn("source''s folder", script)
+        self.assertIn("getReport(err,'extended'", script)
+        self.assertIn('generation_entered.json', script)
+        self.assertIn('generation_launch_error.json', script)
+        self.assertEqual(task['exit_code'], 1)
+        self.assertTrue((folder / 'generation_launcher.log').is_file())
+
     def test_queued_stop_never_launches_matlab(self):
         self.manager.compute.acquire()
         try:
