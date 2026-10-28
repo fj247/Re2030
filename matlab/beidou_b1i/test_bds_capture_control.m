@@ -1,5 +1,9 @@
 function test_bds_capture_control()
 %TEST_BDS_CAPTURE_CONTROL Run on the user's MATLAB R2024a. No graphics required.
+sourceDirectory=fileparts(mfilename('fullpath'));
+assert(strcmpi(fileparts(which('bds_generate')),sourceDirectory), ...
+    'Another bds_generate shadows the integrated version; check MATLAB path.');
+fprintf('Capture source: %s\n',which('bds_generate'));
 root=tempname;mkdir(root);cleanup=onCleanup(@()rmdir(root,'s')); %#ok<NASGU>
 job=fullfile(root,'job');mkdir(job);mkdir(fullfile(job,'detector'));
 cfg=bds_default_config();cfg.durationSeconds=0.2;cfg.keepFullFile=false;
@@ -8,8 +12,12 @@ cfg.outputDirectory=fullfile(job,'private');
 cfg.captureControl=struct('stopFile',fullfile(job,'STOP'), ...
  'progressFile',fullfile(job,'progress.json'),'limitFile',fullfile(job,'limit.json'), ...
  'detectorDirectory',fullfile(job,'detector'),'maxBytes',1);
+test_bds_capture_stop();
 result=bds_generate(cfg);
-assert(result.numberComplexSamples>0 && result.numberComplexSamples<round(.2*cfg.sampleRateHz));
+assert(result.numberComplexSamples>0 && result.numberComplexSamples<round(.2*cfg.sampleRateHz), ...
+    'Capacity stop did not shorten the recording.');
+assert(result.numberComplexSamples==cfg.blockSamples-(cfg.filterLength-1), ...
+    'A one-byte budget should stop after the first output block.');
 meta=bds_metadata(result.metadataFile);
 assert(meta.verification.structuralPassed);
 assert(isempty(meta.waveformFile));assert(numel(meta.segments)==1);

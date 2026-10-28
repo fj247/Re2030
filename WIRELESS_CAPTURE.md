@@ -68,7 +68,9 @@ Python 服务的任务和设置索引位于 `runs/.wireless/`（相对于启动�
 - `BdsFileWriter.m`：支持按实际长度完成最后一片，直接向检测目录写入；读取和校验函数支持独立分片目录，原用法兼容。
 - `bds_capture_entry.m`：默认硬件 A，关闭完整文件，写独立仿真资料目录。
 - `bds_capture_analyze.m`：从分片读取、生成概览和相关证据；只导出检测需要的图和摘要。
-- `test_bds_capture_control.m`：短任务停止／容量收尾、末段、分片读回及零样本测试。
+- `bds_capture_stop.m`：按成功写入的样本账本判断容量，不依赖 Windows 打开文件的目录大小刷新。
+- `test_bds_capture_stop.m`：不生成波形即可检查容量边界和停止标记。
+- `test_bds_capture_control.m`：短任务停止／容量收尾、末段、分片读回及零样本测试，包含上述边界测试。
 
 在仓库根目录的 PowerShell 执行：
 

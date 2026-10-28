@@ -60,7 +60,7 @@ cleanup=onCleanup(@()writer.abort());
 stateS=complex(zeros(1,L-1)); stateW=stateS;
 written=0; signalEnergy=0; noiseEnergy=0; lastProgress=-1;
 for n0=-D:cfg.blockSamples:(N-1+D)
-    if controlled && captureStop(cfg,written), break; end
+    if controlled && bds_capture_stop(cfg,written), break; end
     n=n0:min(n0+cfg.blockSamples-1,N-1+D); t=n/fs;
     svtime=cfg.startSowSeconds+t+ppval(codePP,t);
     chip=mod(floor(svtime*chipRate),2046)+1;
@@ -242,23 +242,11 @@ assert(c.prn==floor(c.prn),'Integer PRN required.');
 assert(~isempty(regexp(c.outputName,'^[A-Za-z0-9_-]+$','once')),'Use a simple outputName.');
 end
 
-function stop=captureStop(cfg,written)
-c=cfg.captureControl;
-stop=exist(c.stopFile,'file')~=0;
-if ~stop
-    listing=dir(fullfile(c.detectorDirectory,'*.f32*'));
-    bytes=sum([listing.bytes]);
-    stop=bytes>=c.maxBytes;
-    if stop
-        bds_capture_json(c.limitFile,struct('reason','storage_limit','sampleCount',written));
-    end
-end
-end
 function captureCheckpoint(cfg,written,phase)
 c=cfg.captureControl;
 bds_capture_json(c.progressFile,struct('phase',phase,'sampleCount',written, ...
     'signalSeconds',written/cfg.sampleRateHz,'sampleRateHz',cfg.sampleRateHz));
-if written==0 && captureStop(cfg,written)
+if written==0 && bds_capture_stop(cfg,written)
     error('BDS:CaptureStoppedEmpty','Stopped before valid samples were generated.');
 end
 end
