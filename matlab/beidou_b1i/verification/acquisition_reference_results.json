@@ -1,0 +1,116 @@
+{
+  "status": "PASS: independent acquisition reference, not MATLAB execution",
+  "matlab_executed": false,
+  "fixtures": [
+    {
+      "fixture": {
+        "prn": 12,
+        "delay": 0.00042375,
+        "fd": 1730,
+        "seed": 428
+      },
+      "target": {
+        "prn": 12,
+        "peak": 14.116741339196926,
+        "ratio": 7.46175915893642,
+        "threshold": 2.2082179890647633,
+        "delay": 3468,
+        "fd": 1500,
+        "detected": true
+      },
+      "other_prn": {
+        "prn": 13,
+        "peak": 1.9078265770645684,
+        "ratio": 1.019468814173592,
+        "threshold": 2.2082179890647633,
+        "delay": 1958,
+        "fd": 9000,
+        "detected": false
+      },
+      "noise": {
+        "prn": 12,
+        "peak": 1.838553187503735,
+        "ratio": 1.0274160274710848,
+        "threshold": 2.2082179890647633,
+        "delay": 3739,
+        "fd": 500,
+        "detected": false
+      }
+    },
+    {
+      "fixture": {
+        "prn": 12,
+        "delay": 0.00024975,
+        "fd": -3400,
+        "seed": 512
+      },
+      "target": {
+        "prn": 12,
+        "peak": 11.062961211019156,
+        "ratio": 6.090997945116058,
+        "threshold": 2.2082179890647633,
+        "delay": 2045,
+        "fd": -3500,
+        "detected": true
+      },
+      "other_prn": {
+        "prn": 13,
+        "peak": 1.8012352129107305,
+        "ratio": 1.0003747664338367,
+        "threshold": 2.2082179890647633,
+        "delay": 3982,
+        "fd": -2000,
+        "detected": false
+      },
+      "noise": {
+        "prn": 12,
+        "peak": 1.830195748569323,
+        "ratio": 1.0066251926152687,
+        "threshold": 2.2082179890647633,
+        "delay": 6051,
+        "fd": -7000,
+        "detected": false
+      }
+    },
+    {
+      "fixture": {
+        "prn": 17,
+        "delay": 0.00074975,
+        "fd": 2650,
+        "seed": 987
+      },
+      "target": {
+        "prn": 17,
+        "peak": 12.132182945826587,
+        "ratio": 6.5699304114271655,
+        "threshold": 2.2082179890647633,
+        "delay": 6136,
+        "fd": 2500,
+        "detected": true
+      },
+      "other_prn": {
+        "prn": 18,
+        "peak": 1.8858136957909635,
+        "ratio": 1.0050567046160357,
+        "threshold": 2.2082179890647633,
+        "delay": 7622,
+        "fd": -7500,
+        "detected": false
+      },
+      "noise": {
+        "prn": 17,
+        "peak": 1.8443232875044735,
+        "ratio": 1.0034514937470824,
+        "threshold": 2.2082179890647633,
+        "delay": 7295,
+        "fd": 6500,
+        "detected": false
+      }
+    }
+  ],
+  "independent_noise_trials": 10,
+  "noise_detections": 0,
+  "maximum_noise_peak_score": 2.0185376647627327,
+  "amplitude_scaling_invariant": true,
+  "warning": "Finite diagnostics do not certify actual false alarm probability."
+}

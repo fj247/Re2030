@@ -686,8 +686,8 @@ async function submitDeviceControl(event) {
     if (Object.keys(params).length) opPayload.parameters = params;
 
     const payload = await api("POST", `/api/runs/${state.runId}/operations`, opPayload);
-    if (payload.error) {
-      setStatus(`下发失败: ${payload.error}`, true);
+    if (payload.error || payload.status === "rejected") {
+      setStatus(`下发失败: ${payload.error || payload.reason || "操作被拒绝"}`, true);
     } else {
       setStatus(`已下发指令: ${action}@${deviceId} (${payload.status || "ok"})`);
     }
@@ -752,6 +752,7 @@ async function refreshViews() {
   renderGooseLab(data);
   renderGooseReceiver(data);
   TimingView.render(data, state.selectedDeviceId);
+  WirelessView.scene(data.wireless_capture_available === true);
   return true;
 }
 
@@ -2529,6 +2530,7 @@ function renderMcMonitor(overview) {
 function inspectDevice(deviceId, fillTarget = false) {
   if (document.body.classList.contains("topology-expanded")) setTopologyExpanded(false);
   state.selectedDeviceId = deviceId;
+  if (deviceId === 'time_detect_node' && state.systemData?.wireless_capture_available) WirelessView.open();
   if (deviceId === 'diff_prot' && state.systemData?.topology?.layout?.timing_lab) TimingView.open();
   if (fillTarget) {
     loadDeviceControls(deviceId);
@@ -2839,6 +2841,7 @@ function renderOtherView(view, data) {
     <div class="sub-empty">该视图暂未提供可视化展示</div>`;
 }
 function bindEvents() {
+  WirelessView.bind();
   TimingView.bind({inspect: id => inspectDevice(id), status: text => setStatus(text)});
   setupTopoInteraction();
   const zoomReset = $("#zoom-reset");

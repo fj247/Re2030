@@ -1988,3 +1988,12 @@ body.packet-inspector-open {
 .timing-window-body #timing-wave { display:flex; flex-direction:column; flex:1; min-height:220px; }
 .timing-window-body .timing-wave-svg { flex:1; min-height:145px; height:auto; }
 .timing-window-body .timing-wave-legend, .timing-window-body .timing-caption, .timing-window-body details { flex-shrink:0; }
+
+[hidden].wireless-panel,[hidden].wireless-recover {display:none;}
+.wireless-recover {position:fixed;right:22px;bottom:18px;z-index:65;background:#173953;color:#a5f3fc;border:1px solid #26748e;padding:9px;border-radius:5px;cursor:pointer;}
+.wireless-panel {position:fixed;right:32px;top:90px;width:660px;height:680px;max-width:calc(100vw - 24px);max-height:calc(100vh - 110px);min-width:340px;min-height:300px;z-index:90;resize:both;overflow:hidden;display:flex;flex-direction:column;background:#0e1b2c;color:#dbeafe;border:1px solid #38718a;border-radius:8px;box-shadow:0 10px 40px #0009;font-size:12px;}
+#wireless-handle {display:flex;justify-content:space-between;padding:12px;background:#18354a;cursor:move;touch-action:none;user-select:none;}
+.wireless-body {padding:14px;overflow:auto;flex:1;min-height:0;line-height:1.7;}
+#wireless-settings label {display:block;margin-bottom:9px;}#wireless-settings input:not([type=checkbox]) {display:block;width:100%;box-sizing:border-box;padding:7px;margin-top:3px;background:#14293d;color:#e0f2fe;border:1px solid #345873;border-radius:4px;}
+.wireless-panel button,.wireless-panel select {background:#19354e;color:#dbeafe;border:1px solid #3e637e;border-radius:4px;padding:5px 8px;cursor:pointer;margin:3px;}.wireless-panel button:disabled {opacity:.4;cursor:default;}
+.wireless-panel dd {margin:0 0 7px;overflow-wrap:anywhere;font-family:monospace;}.wireless-panel dt,.wireless-note {color:#93aabd;}.wireless-panel a {color:#67e8f9;margin:5px;}.wireless-panel table {width:100%;font-size:11px;text-align:left;}.wireless-panel td {border-bottom:1px solid #21394b;overflow-wrap:anywhere;}.wireless-panel figure {margin:12px 0;}.wireless-panel img {width:100%;background:white;}.wireless-panel figcaption {color:#a5f3fc;}.wireless-status {display:flex;justify-content:space-between;padding:10px;background:#123a47;}.wireless-error {color:#fda4af;}#wireless-notice {color:#fde68a;}

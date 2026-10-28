@@ -19,6 +19,7 @@ from sim2030.presentation import views as presentation_views
 from sim2030.records import RunReader
 from sim2030.scenario import load_scenario
 from sim2030.goose_capture import SAMPLES
+from sim2030.wireless_capture import CaptureManager
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -32,6 +33,8 @@ class PresentationServer:
         self.scenario_dir = os.path.abspath(scenario_dir)
         self.output_root = os.path.abspath(output_root)
         self.application = Application(output_root=self.output_root)
+        self.capture = CaptureManager(os.path.join(self.output_root, ".wireless"))
+        self.application.wireless = self.capture
         self._scenario_paths: Dict[str, str] = {}
         self._seen_request_ids: Dict[str, Dict[str, Any]] = {}
         self._refresh_scenario_paths()
@@ -95,6 +98,10 @@ class PresentationServer:
         try:
             if route == "/timing-view.js":
                 return self._static("timing-view.js")
+            if route == "/wireless-view.js":
+                return self._static("wireless-view.js")
+            if route.startswith("/api/wireless"):
+                return self._wireless(method, route, body)
             if route == "/" or route == "/index.html":
                 return self._static("index.html")
             if route in ("/app.js", "/static/app.js"):
@@ -137,6 +144,41 @@ class PresentationServer:
     # ──────────────────────────────────────────────
     # 静态资源
     # ──────────────────────────────────────────────
+    def _wireless(self, method, route, body):
+        try:
+            if route == "/api/wireless" and method == "GET":
+                return 200, self.capture.snapshot(), _JSON_HEADERS
+            if route == "/api/wireless/settings" and method == "POST":
+                return 200, self.capture.configure(self._parse_json(body)), _JSON_HEADERS
+            if route == "/api/wireless/pick-directory" and method == "POST":
+                return 200, {"path": self.capture.pick_directory()}, _JSON_HEADERS
+            parts = route.split("/")
+            if len(parts) >= 5 and parts[3] == "tasks":
+                task_id = parts[4]
+                if not self.capture.task(task_id):
+                    return 404, {"error": "任务不存在"}, _JSON_HEADERS
+                if len(parts) == 6 and method == "POST":
+                    if parts[5] == "stop":
+                        self.capture.stop(task_id)
+                        return 200, self.capture.snapshot(), _JSON_HEADERS
+                    if parts[5] == "open":
+                        self.capture.open_directory(task_id)
+                        return 200, {"status": "opened"}, _JSON_HEADERS
+                if len(parts) == 7 and parts[5] == "files" and method == "GET":
+                    name = parts[6]
+                    # Raw IQ stays on disk; the browser receives only bounded JSON/images.
+                    if name not in {"manifest.json", "analysis.json", "overview.png", "presence.png", "correlation.png"}:
+                        raise ValueError("文件不允许由页面读取")
+                    path = self.capture.file(task_id, name)
+                    if not path.is_file():
+                        return 404, {"error": "结果尚未就绪"}, _JSON_HEADERS
+                    if path.stat().st_size > 16 * 1024**2:
+                        raise ValueError("展示文件过大")
+                    return 200, {"__bytes__": path.read_bytes()}, {"Content-Type": "image/png" if name.endswith('.png') else "application/json", "Cache-Control": "no-store"}
+            return 404, {"error": "接口不存在"}, _JSON_HEADERS
+        except (ValueError, OSError) as exc:
+            return 400, {"error": str(exc)}, _JSON_HEADERS
+
     def _static(self, name: str) -> Tuple[int, Dict[str, Any], Dict[str, str]]:
         path = os.path.join(STATIC_DIR, name)
         if not os.path.isfile(path):
@@ -394,6 +436,7 @@ class PresentationServer:
         """启动阻塞式 HTTP 服务；``application`` 可选，缺省沿用内部应用。"""
         if application is not None:
             self.application = application
+            self.application.wireless = self.capture
         self._refresh_scenario_paths()
 
         from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -408,11 +451,17 @@ class PresentationServer:
                 self._dispatch()
 
             def _dispatch(self):
+                origin = self.headers.get("Origin")
+                if (self.path.startswith("/api/wireless") and self.client_address[0] not in {"127.0.0.1", "::1"}) or (origin and self.command == "POST" and urlsplit(origin).netloc != self.headers.get("Host")):
+                    self.send_error(403, "Local same-origin requests only")
+                    return
                 length = int(self.headers.get("Content-Length", 0) or 0)
                 body = self.rfile.read(length) if length else None
                 status, payload, headers = server.handle_request(self.command, self.path, body)
                 raw = payload.get("__raw__")
-                if raw is not None:
+                if "__bytes__" in payload:
+                    data = payload["__bytes__"]
+                elif raw is not None:
                     data = raw.encode("utf-8")
                 else:
                     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -431,6 +480,7 @@ class PresentationServer:
             httpd.serve_forever()
         finally:
             httpd.server_close()
+            self.close()
 
 
 __all__ = ["PresentationServer"]

@@ -1,0 +1,12 @@
+{
+  "status": "PASS: independent numerical/reference checks only",
+  "matlab_executed": false,
+  "bch_codewords_checked": 2048,
+  "bch_minimum_distance": 3,
+  "prn12_ones": 1024,
+  "equivalent_noise_bandwidth_Hz": 5507662.65025586,
+  "noise_power_relative_error": -6.557409304142059e-05,
+  "approximate_filter_signal_loss_dB": -0.25696631394746544,
+  "default_60s_complex_samples": 491040000,
+  "default_60s_waveform_bytes": 3928320000
+}

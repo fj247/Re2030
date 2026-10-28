@@ -1,0 +1,18 @@
+{
+  "status": "PASS: independent reference invariants, not MATLAB execution",
+  "matlab_executed": false,
+  "storage_cases": 6,
+  "segment_counts": [
+    11,
+    2,
+    1,
+    2,
+    11,
+    19
+  ],
+  "analysis": {
+    "samples_covered": 10003,
+    "peak_frequency_Hz": 64.0,
+    "integrated_psd_W": 0.4900000095320069
+  }
+}

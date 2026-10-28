@@ -1,0 +1,83 @@
+{
+  "scope": "Independent numerical checks, MATLAB NOT executed",
+  "matlab_executed": false,
+  "phase_noise_max_fit_error_db": 0.5270667509751233,
+  "phase_noise_rms_rad": 0.00713734708429964,
+  "aa_stop_max_db": -75.30313169284649,
+  "tx_and_aa_reference_delay_seconds": 4.319119311171085e-06,
+  "extra_amplitude_pp_db": 0.046803911089780076,
+  "extra_group_delay_pp_ns": 0.9347116466373252,
+  "convergence": {
+    "A": {
+      "8x_vs_32x_relative_rms": 0.0012650946540491254,
+      "16x_vs_32x_relative_rms": 0.0002567281090688819
+    },
+    "B": {
+      "8x_vs_32x_relative_rms": 0.0012398751518721582,
+      "16x_vs_32x_relative_rms": 0.00025157936050351727
+    }
+  },
+  "fractional_1ns_edge_change_norm": 1.661493097454035,
+  "hardware_acquisition_fixtures": {
+    "A": {
+      "target": {
+        "prn": 12,
+        "peak": 13.454914772195723,
+        "ratio": 7.151314372150804,
+        "threshold": 2.2082179890647633,
+        "delay": 3468,
+        "fd": 1500,
+        "detected": true
+      },
+      "wrong_prn": {
+        "prn": 13,
+        "peak": 1.9182998711616754,
+        "ratio": 1.0176216920054837,
+        "threshold": 2.2082179890647633,
+        "delay": 1958,
+        "fd": 9000,
+        "detected": false
+      },
+      "noise": {
+        "prn": 12,
+        "peak": 1.838553187503735,
+        "ratio": 1.0274160274710848,
+        "threshold": 2.2082179890647633,
+        "delay": 3739,
+        "fd": 500,
+        "detected": false
+      }
+    },
+    "B": {
+      "target": {
+        "prn": 12,
+        "peak": 13.454757562565836,
+        "ratio": 7.151377701916664,
+        "threshold": 2.2082179890647633,
+        "delay": 3468,
+        "fd": 1500,
+        "detected": true
+      },
+      "wrong_prn": {
+        "prn": 13,
+        "peak": 1.918288987686553,
+        "ratio": 1.0176562732278795,
+        "threshold": 2.2082179890647633,
+        "delay": 1958,
+        "fd": 9000,
+        "detected": false
+      },
+      "noise": {
+        "prn": 12,
+        "peak": 1.838553187503735,
+        "ratio": 1.0274160274710848,
+        "threshold": 2.2082179890647633,
+        "delay": 3739,
+        "fd": 500,
+        "detected": false
+      }
+    }
+  },
+  "streaming_fir_max_error": 5.661048867003677e-16,
+  "status": "PASS"
+}

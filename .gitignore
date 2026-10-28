@@ -23,3 +23,7 @@ docs/*.docx
 
 # 过程目录（临时脚本、渲染图、dump、测试临时目录）
 _work/
+
+# 无线采集任务及 MATLAB 手动运行产物
+capture_*/
+matlab/beidou_b1i/bds_output/

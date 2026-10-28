@@ -317,6 +317,22 @@
     </div>
   </section>
 
+  <button id="wireless-recover" class="wireless-recover" hidden>检测任务</button>
+  <section id="wireless-panel" class="wireless-panel" role="dialog" aria-modal="false" aria-labelledby="wireless-title" hidden>
+    <header id="wireless-handle"><strong id="wireless-title">授时无线信号 · 检测节点</strong><button id="wireless-close" type="button" aria-label="关闭检测面板">×</button></header>
+    <div class="wireless-body">
+      <form id="wireless-settings">
+        <label><input id="wireless-enabled" type="checkbox">启用无线采集（仅授时攻击场景）</label>
+        <label>MATLAB R2024a 路径<input id="wireless-matlab" placeholder="C:\Program Files\MATLAB\R2024a\bin\matlab.exe"></label>
+        <label>保存父目录<input id="wireless-directory" placeholder="请选择本机绝对路径"></label>
+        <button id="wireless-pick" type="button">浏览文件夹</button><button type="submit">保存设置</button>
+      </form>
+      <p id="wireless-notice" role="status"></p>
+      <p class="wireless-note">I/Q 为 8.184 MHz 小端 float32 交错采样，每复样本 8 字节；默认每段 1 秒信号，只保存分片。每轮原始数据上限 2 GiB。数据和图表分别就绪，MATLAB 计算任务依次执行。</p>
+      <div id="wireless-tasks"></div>
+    </div>
+  </section>
+
   <!-- 内部报文详情：仅展示 Message.to_record() 的真实字段 -->
   <div id="packet-inspector" class="packet-inspector" aria-hidden="true">
     <div class="packet-inspector-backdrop" data-packet-close="1"></div>
@@ -341,6 +357,7 @@
   <script src="/network-topology.js?v=20261019-protocols5"></script>
   <script src="/measurement-sources.js?v=20261018-merged"></script>
   <script src="/simulation-player.js?v=20261012-playback3"></script>
+  <script src="/wireless-view.js?v=20261028"></script>
   <script src="/timing-view.js?v=20261018-floating2"></script>
   <script src="/app.js?v=20261020-timing-merged"></script>
 </body>

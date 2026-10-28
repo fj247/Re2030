@@ -1,0 +1,36 @@
+function p = bds_tx_hardware_profile(name)
+%BDS_TX_HARDWARE_PROFILE Complete synthetic TX profile (not a measured SV).
+if nargin<1, name='transmitter_A'; end
+name=char(name);
+assert(any(strcmpi(name,{'transmitter_A','transmitter_B'})),'Unknown transmitter profile.');
+p.schema='bds-tx-hardware-v1'; p.modelVersion='4.0'; p.name='transmitter_A';
+p.enabled=true; p.internalOversampling=8; p.internalBlockSamples=65536;
+p.interpolationHalfLength=24; p.seed=20261027;
+p.bandwidth=struct('enabled',true,'order',2,'cutoffHz',8e6);
+p.response=struct('enabled',true,'amplitudeRipplePpDb',0.05, ...
+    'groupDelayRipplePpSeconds',1e-9,'referenceBandHz',2.046e6,'firLength',257);
+p.pa=struct('enabled',true,'ampmEnabled',true,'model','Rapp', ...
+    'smoothness',2,'inputBackoffDb',6,'ampmAtReferenceDeg',1);
+p.phaseNoise=struct('enabled',true,'offsetHz',[10 100 1000 10000 100000], ...
+    'historicalLevelDbcPerHz',[-60 -75 -80 -85 -95], ...
+    'marginDb',10,'processSampleRateHz',1048576, ...
+    'cornerHz',logspace(0,5.5,12));
+p.spurs=struct('enabled',true,'offsetHz',8e5,'levelDbc',-70,'phaseRad',0.7);
+p.iqImbalance=struct('enabled',false,'amplitudeDb',0.1,'phaseDeg',0.5);
+p.edgeAsymmetry=struct('enabled',false,'fallingEdgeDelaySeconds',1e-9);
+p.timingJitter=struct('enabled',false,'rmsSeconds',0.1e-9,'correlationSeconds',0.001);
+p.extraCarrierOffsetHz=0; p.extraLossDb=0;
+p.provenance=struct('classification','Synthetic normal-operation engineering reference; NOT measured BDS hardware', ...
+ 'bandwidth','Historical CSNO ICD 2.0 (2013), total 3dB width 16MHz; Butterworth topology is assumed', ...
+ 'response','0.05dB / 1ns and their smooth response shapes are engineering assumptions', ...
+ 'pa','Rapp AM/AM plus smooth AM/PM; IBO, p and phase values are assumptions', ...
+ 'phaseNoise','CSNO ICD 2.0 spectral points minus an assumed margin; not a current compliance certificate', ...
+ 'spurs','Level informed by Chen et al. 2022 Table 3; tone location/count/phase assumed', ...
+ 'optional','IQ / edge / jitter parameters are assumptions, disabled by default');
+if strcmpi(name,'transmitter_B')
+    p.name='transmitter_B'; p.response.amplitudeRipplePpDb=0.04;
+    p.response.groupDelayRipplePpSeconds=0.8e-9; p.pa.inputBackoffDb=7;
+    p.pa.ampmAtReferenceDeg=0.8; p.phaseNoise.marginDb=12; p.spurs.levelDbc=-74;
+    p.provenance.response='0.04dB / 0.8ns and their smooth response shapes are engineering assumptions';
+end
+end

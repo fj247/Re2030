@@ -58,6 +58,7 @@ class Application:
         self.goose_capture = None
         self.goose_lab = None
         self.timing_lab = None
+        self.wireless = None
         self.dt_us: int = 100000
         self.duration_us: int = 0
         self._device_ids: set = set()
@@ -102,6 +103,8 @@ class Application:
                 raise ValueError("GOOSE 样本尚未导入，请先运行 tools/import_message_core.py") from exc
 
         lab = GooseLab(capture, config.layout["goose_lab"]) if capture and config.layout.get("goose_lab") else None
+        if self.wireless:
+            self.wireless.prepare_new_run()
         self._close_recorder()
         self.goose_lab = lab
         self.config = config
@@ -181,12 +184,16 @@ class Application:
             self.status = STATUS_PAUSED
 
     def stop(self) -> None:
+        if self.wireless:
+            self.wireless.stop()
         if self.status in (STATUS_RUNNING, STATUS_PAUSED):
             self.status = STATUS_FINISHED
             self._close_recorder()
 
     def close(self) -> None:
         """释放当前运行持有的文件句柄，供服务或测试安全清理目录。"""
+        if self.wireless and not self.wireless.closed:
+            self.wireless.close()
         self._close_recorder()
 
     # ──────────────────────────────────────────────
@@ -328,9 +335,17 @@ class Application:
             if device.emitting:
                 return {"request_id": request_id, "status": "noop", "action": action_type,
                         "reason": "攻击已在进行"}
+            capture_id = None
+            if self.wireless and self.config.scenario_id == "substation-time-attack":
+                try:
+                    capture_id = self.wireless.start(self.run_id)
+                except (ValueError, OSError) as exc:
+                    return {"request_id": request_id, "status": "rejected", "reason": str(exc)}
             effect = device.build_effect_request(self.current_time_us)
             receipt = self.engine.submit_effect(effect)
             if receipt.get("status") != "accepted":
+                if capture_id:
+                    self.wireless.stop(capture_id)
                 return {"request_id": request_id, "status": "rejected",
                         "reason": receipt.get("reason", "作用被拒绝")}
             device.set_emitting(True)
@@ -339,6 +354,8 @@ class Application:
             return {"request_id": request_id, "status": "accepted", "action": action_type,
                     "effect_id": effect.effect_id, "target_id": effect.target_id}
 
+        if self.wireless and self.config.scenario_id == "substation-time-attack":
+            self.wireless.stop()
         if not device.emitting:
             return {"request_id": request_id, "status": "noop", "action": action_type,
                     "reason": "攻击未进行"}
@@ -417,6 +434,8 @@ class Application:
         self.current_time_us += self.dt_us
         if self.duration_us and self.current_time_us >= self.duration_us:
             self.status = STATUS_FINISHED
+            if self.wireless:
+                self.wireless.stop()
             self._close_recorder()
 
         self._last_step_summary = self._summary()
@@ -756,6 +775,7 @@ class Application:
             "packet_capture": self._goose_view(),
             "goose_lab": self.goose_lab.view(self.engine) if self.goose_lab else None,
             "timing_lab": self._timing_view(),
+            "wireless_capture_available": config.scenario_id == "substation-time-attack" if config else False,
             "management": self.engine.get_management(sorted(self._device_ids)),
             "observations": self._observation_view().get("observations", {}),
             "recognition": [asdict(r) for r in (self.recognition_engine.last_results() if self.recognition_engine else [])],
