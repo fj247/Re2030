@@ -87,6 +87,7 @@ for n0=-D:cfg.blockSamples:(N-1+D)
     % Causal FIR output at input index n represents centered time (n-D)/fs.
     keep=(n>=D & n<=N-1+D); a=sf(keep); b=wf(keep); iq=a+b;
     writer.write(iq);
+    if controlled, publishFirstSegment(cfg,writer,h,runDirectory); end
     written=written+numel(iq);
     signalEnergy=signalEnergy+sum(abs(a).^2); noiseEnergy=noiseEnergy+sum(abs(b).^2);
     if controlled, captureCheckpoint(cfg,written,'generating'); end
@@ -104,6 +105,7 @@ if controlled
         return;
     end
     N=written; cfg.durationSeconds=N/fs; writer.finish(N);
+    publishFirstSegment(cfg,writer,h,runDirectory);
 else
     assert(written==N,'Sample-count mismatch.'); writer.finish();
 end
@@ -249,4 +251,16 @@ bds_capture_json(c.progressFile,struct('phase',phase,'sampleCount',written, ...
 if written==0 && bds_capture_stop(cfg,written)
     error('BDS:CaptureStoppedEmpty','Stopped before valid samples were generated.');
 end
+end
+
+function publishFirstSegment(cfg,writer,h,runDirectory)
+% Publish once, ONLY after the writer has closed and renamed the first file.
+c=cfg.captureControl;
+if ~isfield(c,'firstSegmentFile') || isempty(writer.Records) || exist(c.firstSegmentFile,'file'), return; end
+s=writer.Records(1);
+m=struct('sourceDirectory',runDirectory,'segmentDirectory',c.detectorDirectory, ...
+    'sampleRateHz',cfg.sampleRateHz,'numberComplexSamples',s.sampleCount, ...
+    'segmentSamples',round(cfg.segmentSeconds*cfg.sampleRateHz),'segments',s, ...
+    'configuration',cfg,'filterCoefficients',h);
+bds_capture_json(c.firstSegmentFile,m);
 end

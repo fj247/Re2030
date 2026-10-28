@@ -14,6 +14,8 @@ try
         'progressFile',fullfile(r.taskDirectory,'progress.json'), ...
         'limitFile',fullfile(r.taskDirectory,'limit.json'), ...
         'detectorDirectory',fullfile(r.taskDirectory,'detector'),'maxBytes',r.maxBytes);
+    cfg.captureControl.firstSegmentFile=fullfile(r.taskDirectory,'first_segment.json');
+    if isfield(r,'serviceLeaseFile'), cfg.captureControl.serviceLeaseFile=r.serviceLeaseFile; end
     if exist(cfg.captureControl.stopFile,'file')
         bds_capture_json(fullfile(r.taskDirectory,'generated.json'),struct('empty',true)); return;
     end

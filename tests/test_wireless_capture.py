@@ -13,6 +13,7 @@ from unittest.mock import patch
 from sim2030.wireless_capture import CaptureManager, write_json, matlab_quote
 from sim2030.presentation.server import PresentationServer
 from sim2030.application import Application
+from sim2030.matlab_worker import MatlabWorker
 
 ROOT = Path(__file__).resolve().parents[1]
 SCENE = str(ROOT / 'scenarios/substation-time-attack.json')
@@ -27,6 +28,22 @@ def wait_for(predicate, timeout=5):
     raise AssertionError('Worker did not reach expected state')
 
 
+class ReadyWorker:
+    """Protocol double; does not run MATLAB or generate physical samples."""
+    def __init__(self, directory, executable, source, role):
+        self.directory = Path(directory)
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.phase = 'ready'
+        self.closed = False
+
+    def status(self):
+        return {'phase':self.phase, 'error':'worker crashed' if self.phase == 'failed' else ''}
+
+    def close(self):
+        self.closed = True
+        self.phase = 'stopped'
+
+
 class CaptureTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -35,6 +52,8 @@ class CaptureTests(unittest.TestCase):
         self.manager = CaptureManager(self.root / 'state')
         self.addCleanup(self.manager.close)
         self.entered = threading.Event()
+        self.manager.worker_factory = ReadyWorker
+        self.manager.set_scene(True)
         self.manager._invoke = self.fake_matlab
         self.manager.configure({'enabled': True, 'output_directory': str(self.root / 'captures'), 'matlab': sys.executable})
 
@@ -95,6 +114,13 @@ class CaptureTests(unittest.TestCase):
             self.assertEqual(status, 200)
             self.assertEqual(body['__bytes__'], b'published-image')
             self.assertEqual(headers['Content-Type'], 'image/png')
+        for name in ('mean_psd.json','prn_search.json','correlation.json'):
+            write_json(detector / name, {'kind':name})
+            status, body, headers = server.handle_request('GET', f'/api/wireless/tasks/{task_id}/files/{name}')
+            self.assertEqual(status, 200)
+            self.assertEqual(headers['Content-Type'], 'application/json')
+        self.assertEqual(self.manager.snapshot()['tasks'][0]['charts'],
+                         ['mean_psd.json','prn_search.json','correlation.json'])
         (detector / 'mean_psd.png.partial.png').write_bytes(b'unfinished')
         self.assertEqual(server.handle_request('GET',
             f'/api/wireless/tasks/{task_id}/files/segment_000001.iq.f32')[0], 400)
@@ -124,30 +150,120 @@ class CaptureTests(unittest.TestCase):
         wait_for(lambda: self.manager.task(task_id)['phase'] == 'failed')
         self.assertFalse(self.manager.task(task_id)['data_ready'])
 
-    def test_windows_launcher_waits_and_keeps_native_diagnostics(self):
-        folder = self.root / 'launch-test'
-        folder.mkdir()
-        source = self.root / "source's folder"
-        source.mkdir()
-        task = {'directory':str(folder), 'matlab':sys.executable}
-        with patch('sim2030.wireless_capture.MATLAB_SOURCE', source), \
-                patch('sim2030.wireless_capture.sys.platform', 'win32'), \
-                patch('sim2030.wireless_capture.subprocess.Popen') as popen:
-            popen.return_value.pid = 77
-            popen.return_value.wait.return_value = 1
-            code = CaptureManager._invoke(self.manager, task, 'bds_capture_entry', 'generation.log')
-        self.assertEqual(code, 1)
-        args = popen.call_args.args[0]
-        self.assertIn('-wait', args)
-        self.assertEqual(args[args.index('-logfile')+1], str(folder / 'generation.log'))
-        self.assertEqual(popen.call_args.kwargs['cwd'], str(source))
-        script = (folder / 'generation_launch.m').read_text()
-        self.assertIn("source''s folder", script)
-        self.assertIn("getReport(err,'extended'", script)
-        self.assertIn('generation_entered.json', script)
-        self.assertIn('generation_launch_error.json', script)
-        self.assertEqual(task['exit_code'], 1)
-        self.assertTrue((folder / 'generation_launcher.log').is_file())
+    def test_start_before_ready_is_rejected_without_creating_task(self):
+        self.manager.workers['generation'].phase = 'preparing'
+        app = Application(output_root=str(self.root / 'runs'))
+        app.load(SCENE)
+        app.wireless = self.manager
+        try:
+            result = app.submit_operation({'target_asset_id':'time_attack_node','action_type':'start_attack'})
+            self.assertEqual(result['status'], 'rejected')
+            self.assertIn('相关装置启动中，请稍后', result['reason'])
+            self.assertFalse(app.engine.get_device('time_attack_node').emitting)
+            self.assertFalse(self.manager.tasks)
+        finally:
+            app.wireless = None
+            app.close()
+
+    def test_preparation_waits_for_scene_and_configuration_and_reuses_workers(self):
+        self.manager.configure({'enabled':False})
+        self.manager.set_scene(False)
+        self.manager.configure({'enabled':True, 'output_directory':str(self.root / 'captures'), 'matlab':sys.executable})
+        self.assertFalse(self.manager.workers)
+        self.manager.set_scene(True)
+        original = dict(self.manager.workers)
+        self.assertEqual(self.manager.receiver()['detail'], '接收装置已就绪')
+        self.assertEqual(self.manager.tasks, [])
+        self.manager.set_scene(True)
+        self.assertEqual(self.manager.workers, original)
+        self.manager.configure({'enabled':False})
+        self.assertTrue(all(worker.closed for worker in original.values()))
+
+    def test_loading_timing_scene_prepares_saved_enabled_configuration(self):
+        self.manager.configure({'enabled':False})
+        self.manager.set_scene(False)
+        self.manager.configure({'enabled':True,'output_directory':str(self.root/'captures'),'matlab':sys.executable})
+        app = Application(output_root=str(self.root/'runs'))
+        app.wireless = self.manager
+        try:
+            app.load(SCENE)
+            self.assertEqual(self.manager.receiver()['phase'], 'ready')
+            self.assertEqual(self.manager.tasks, [])
+        finally:
+            app.wireless = None
+            app.close()
+
+    def test_worker_crash_is_visible_and_resaving_reprepares(self):
+        original = self.manager.workers['analysis']
+        original.phase = 'failed'
+        self.assertEqual(self.manager.snapshot()['receiver']['phase'], 'failed')
+        with self.assertRaisesRegex(ValueError, 'worker crashed'):
+            self.manager.start('failed')
+        self.assertEqual(self.manager.tasks, [])
+        self.manager.configure(dict(self.manager.settings))
+        self.assertTrue(original.closed)
+        self.assertIsNot(original, self.manager.workers['analysis'])
+        self.assertEqual(self.manager.receiver()['phase'], 'ready')
+
+    def test_first_closed_segment_is_analyzed_before_stop_exactly_once(self):
+        analyzed = threading.Event()
+        calls = []
+        def concurrent(task, entry, log):
+            folder = Path(task['directory'])
+            if entry == 'bds_capture_analyze':
+                self.assertFalse((folder / 'STOP').exists())
+                calls.append(entry)
+                write_json(folder / 'detector/analysis.json', {'overview':'saved','presence':'inconclusive'})
+                analyzed.set()
+                return 0
+            (folder / 'detector/segment_000001.iq.f32').write_bytes(b'12345678')
+            write_json(folder / 'first_segment.json', {'segments':{'fileName':'segment_000001.iq.f32',
+                       'startSample':0,'sampleCount':1}})
+            self.entered.set()
+            while not (folder / 'STOP').exists():
+                time.sleep(.01)
+            # Normal final metadata is independent of the already published analysis.
+            (folder / 'detector/segment_000001.iq.f32').unlink()
+            return self.fake_matlab(task, entry, log)
+        self.manager._invoke = concurrent
+        task_id = self.manager.start('early')
+        self.assertTrue(self.entered.wait(2))
+        self.assertTrue(analyzed.wait(2))
+        wait_for(lambda:self.manager.task(task_id)['analysis']=='complete')
+        self.assertFalse(self.manager.task(task_id)['data_ready'])
+        self.manager.stop(task_id)
+        wait_for(lambda:self.manager.task(task_id)['phase']=='ready')
+        self.assertEqual(calls, ['bds_capture_analyze'])
+        request = json.loads((Path(self.manager.task(task_id)['directory'])/'analysis_request.json').read_text())
+        self.assertTrue(request['metadataFile'].endswith('first_segment.json'))
+
+    def test_partial_first_file_does_not_trigger_analysis(self):
+        task_id = self.manager.start('partial')
+        self.assertTrue(self.entered.wait(2))
+        folder = Path(self.manager.task(task_id)['directory'])
+        write_json(folder / 'first_segment.json', {'segments':{'fileName':'segment_000001.iq.f32',
+                   'startSample':0,'sampleCount':2}})
+        time.sleep(.2)
+        self.assertEqual(self.manager.task(task_id)['analysis'], 'waiting')
+        self.finish(task_id)
+
+    def test_analysis_in_progress_blocks_next_attack_without_creating_task(self):
+        gate = threading.Event()
+        self.addCleanup(gate.set)
+        def delayed(task, entry, log):
+            if entry == 'bds_capture_analyze':
+                gate.wait(2)
+            return self.fake_matlab(task, entry, log)
+        self.manager._invoke = delayed
+        task_id = self.manager.start('first')
+        self.assertTrue(self.entered.wait(2))
+        self.manager.stop(task_id)
+        wait_for(lambda:self.manager.task(task_id)['analysis']=='running')
+        with self.assertRaisesRegex(ValueError, '分析尚未完成'):
+            self.manager.start('second')
+        self.assertEqual(len(self.manager.tasks), 1)
+        gate.set()
+        wait_for(lambda:self.manager.task(task_id)['analysis']=='complete')
 
     def test_queued_stop_never_launches_matlab(self):
         self.manager.compute.acquire()
@@ -271,5 +387,6 @@ class CaptureHttpTests(unittest.TestCase):
                 self.assertIn('error',body)
                 self.assertEqual(server.handle_request('GET','/api/wireless/tasks/unknown/files/request.json')[0],404)
                 self.assertEqual(server.handle_request('GET','/wireless-view.js')[0],200)
+                self.assertEqual(server.handle_request('GET','/wireless-charts.js')[0],200)
             finally:
                 server.close()

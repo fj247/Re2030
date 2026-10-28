@@ -1,6 +1,11 @@
 function d = bds_tx_design(p,fs,rxCutoff)
 %BDS_TX_DESIGN Realized coefficients, causal delay reference and PSD fit.
-p=bds_tx_validate(p,fs,rxCutoff); fhi=fs*p.internalOversampling;
+persistent cachedParameters cachedFs cachedCutoff cachedDesign
+p=bds_tx_validate(p,fs,rxCutoff);
+if ~isempty(cachedDesign) && isequal(p,cachedParameters) && isequal(fs,cachedFs) && isequal(rxCutoff,cachedCutoff)
+    d=cachedDesign;return;
+end
+fhi=fs*p.internalOversampling;
 d.effectiveModules=struct();
 for name={'bandwidth','response','pa','phaseNoise','spurs','iqImbalance','edgeAsymmetry','timingJitter'}
     d.effectiveModules.(name{1})=logical(p.enabled && p.(name{1}).enabled);
@@ -50,6 +55,7 @@ d.phaseNoiseFit=phaseFit(p.phaseNoise);
 d.referenceInputAmplitude=1;
 d.amplitudeCalibration=1; % Filled by source constructor, fixed for the entire run.
 d.referencePolicy='Normalize main deterministic TX output power using fixed 8ms PRN calibration BEFORE anti-alias/RX; no per-block normalization. Excludes PN/spurs.';
+cachedParameters=p;cachedFs=fs;cachedCutoff=rxCutoff;cachedDesign=d;
 end
 function h=lowpassFir(L,cut,fs)
 n=-(L-1)/2:(L-1)/2; z=2*cut/fs*n; s=ones(size(z)); k=z~=0; s(k)=sin(pi*z(k))./(pi*z(k));

@@ -11,7 +11,8 @@ cfg.verifyFullFile=false;cfg.autoOverview=false;cfg.overviewVisible=false;
 cfg.outputDirectory=fullfile(job,'private');
 cfg.captureControl=struct('stopFile',fullfile(job,'STOP'), ...
  'progressFile',fullfile(job,'progress.json'),'limitFile',fullfile(job,'limit.json'), ...
- 'detectorDirectory',fullfile(job,'detector'),'maxBytes',1);
+ 'detectorDirectory',fullfile(job,'detector'),'maxBytes',1, ...
+ 'firstSegmentFile',fullfile(job,'first_segment.json'));
 test_bds_capture_stop();
 result=bds_generate(cfg);
 assert(result.numberComplexSamples>0 && result.numberComplexSamples<round(.2*cfg.sampleRateHz), ...
@@ -20,6 +21,9 @@ assert(result.numberComplexSamples==cfg.blockSamples-(cfg.filterLength-1), ...
     'A one-byte budget should stop after the first output block.');
 meta=bds_metadata(result.metadataFile);
 assert(meta.verification.structuralPassed);
+first=jsondecode(fileread(fullfile(job,'first_segment.json')));
+assert(first.numberComplexSamples==result.numberComplexSamples);
+assert(exist(fullfile(job,'detector',first.segments(1).fileName),'file')~=0);
 assert(isempty(meta.waveformFile));assert(numel(meta.segments)==1);
 segment=fullfile(job,'detector','segment_000001.iq.f32');
 d=dir(segment);assert(d.bytes==8*result.numberComplexSamples);

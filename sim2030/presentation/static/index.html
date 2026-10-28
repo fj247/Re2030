@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="data:,">
   <title>国家重点研发计划2030 · 感控系统安全态势大屏</title>
-  <link rel="stylesheet" href="/style.css?v=20261019-protocols5">
+  <link rel="stylesheet" href="/style.css?v=20261029-wireless">
 </head>
 <body>
   <!-- 顶部状态栏 -->
@@ -322,13 +322,14 @@
     <header id="wireless-handle"><strong id="wireless-title">授时无线信号 · 检测节点</strong><button id="wireless-close" type="button" aria-label="关闭检测面板">×</button></header>
     <div class="wireless-body">
       <form id="wireless-settings">
-        <label><input id="wireless-enabled" type="checkbox">启用无线采集（仅授时攻击场景）</label>
+        <label><input id="wireless-enabled" type="checkbox">启用无线采集</label>
         <label>MATLAB R2024a 路径<input id="wireless-matlab" placeholder="C:\Program Files\MATLAB\R2024a\bin\matlab.exe"></label>
         <label>保存父目录<input id="wireless-directory" placeholder="请选择本机绝对路径"></label>
         <button id="wireless-pick" type="button">浏览文件夹</button><button type="submit">保存设置</button>
       </form>
       <p id="wireless-notice" role="status"></p>
-      <p class="wireless-note">I/Q 为 8.184 MHz 小端 float32 交错采样，每复样本 8 字节；每段 0.05 秒信号（末段可短于此），只保存分片。采集结束后仅用首个分片生成展示图。每轮原始数据上限 2 GiB。数据和图表分别就绪，MATLAB 计算任务依次执行。</p>
+      <div id="wireless-receiver" class="wireless-status" role="status"></div>
+      <p class="wireless-note">I/Q 为 8.184 MHz 小端 float32 交错采样，每复样本 8 字节；每段 0.05 秒信号（末段可短于此），只保存分片。首个分片关闭后即可分析并展示图表。每轮原始数据上限 2 GiB。数据和图表分别就绪，采集与首片分析独立执行。</p>
       <div id="wireless-tasks"></div>
     </div>
   </section>
@@ -357,7 +358,8 @@
   <script src="/network-topology.js?v=20261019-protocols5"></script>
   <script src="/measurement-sources.js?v=20261018-merged"></script>
   <script src="/simulation-player.js?v=20261012-playback3"></script>
-  <script src="/wireless-view.js?v=20261028"></script>
+  <script src="/wireless-charts.js?v=20261029"></script>
+  <script src="/wireless-view.js?v=20261029"></script>
   <script src="/timing-view.js?v=20261018-floating2"></script>
   <script src="/app.js?v=20261020-timing-merged"></script>
 </body>

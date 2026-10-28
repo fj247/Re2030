@@ -171,6 +171,8 @@ class Application:
         for operation in config.operations:
             self.submit_operation(operation)
 
+        if self.wireless:
+            self.wireless.set_scene(config.scenario_id == "substation-time-attack")
         self.status = STATUS_READY
         self._last_step_summary = self._summary()
         return self.run_id

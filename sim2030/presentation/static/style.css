@@ -1997,3 +1997,10 @@ body.packet-inspector-open {
 #wireless-settings label {display:block;margin-bottom:9px;}#wireless-settings input:not([type=checkbox]) {display:block;width:100%;box-sizing:border-box;padding:7px;margin-top:3px;background:#14293d;color:#e0f2fe;border:1px solid #345873;border-radius:4px;}
 .wireless-panel button,.wireless-panel select {background:#19354e;color:#dbeafe;border:1px solid #3e637e;border-radius:4px;padding:5px 8px;cursor:pointer;margin:3px;}.wireless-panel button:disabled {opacity:.4;cursor:default;}
 .wireless-panel dd {margin:0 0 7px;overflow-wrap:anywhere;font-family:monospace;}.wireless-panel dt,.wireless-note {color:#93aabd;}.wireless-panel a {color:#67e8f9;margin:5px;}.wireless-panel table {width:100%;font-size:11px;text-align:left;}.wireless-panel td {border-bottom:1px solid #21394b;overflow-wrap:anywhere;}.wireless-panel figure {margin:12px 0;}.wireless-panel img {width:100%;background:white;}.wireless-panel figcaption {color:#a5f3fc;}.wireless-status {display:flex;justify-content:space-between;padding:10px;background:#123a47;}.wireless-error {color:#fda4af;}#wireless-notice {color:#fde68a;}
+
+#wireless-receiver {margin:10px 0;color:#a5f3fc;}
+.wireless-chart-card {padding:12px;background:#102337;border:1px solid #29485c;border-radius:8px;overflow:hidden;}
+.wireless-chart-card figcaption {font-size:14px;font-weight:600;margin-bottom:8px;}
+.wireless-chart {position:relative;min-height:80px;}
+.wireless-chart-canvas {display:block;width:100%;height:auto;outline-color:#55dcec;touch-action:pan-y;}
+.wireless-chart-tooltip {color:#dbeafe;font:12px monospace;overflow-wrap:anywhere;min-height:20px;padding:4px 6px;background:#19354e;border-radius:4px;}

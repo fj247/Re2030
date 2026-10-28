@@ -98,6 +98,8 @@ class PresentationServer:
         try:
             if route == "/timing-view.js":
                 return self._static("timing-view.js")
+            if route == "/wireless-charts.js":
+                return self._static("wireless-charts.js")
             if route == "/wireless-view.js":
                 return self._static("wireless-view.js")
             if route.startswith("/api/wireless"):
@@ -437,6 +439,8 @@ class PresentationServer:
         if application is not None:
             self.application = application
             self.application.wireless = self.capture
+            if self.application.config:
+                self.capture.set_scene(self.application.config.scenario_id == "substation-time-attack")
         self._refresh_scenario_paths()
 
         from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

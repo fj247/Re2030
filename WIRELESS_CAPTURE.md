@@ -1,52 +1,52 @@
 # 授时攻击：本地无线信号采集
 
-本功能位于 `feat/timing-wireless-capture`，只在“变电站授时攻击场景”中把手动攻击操作接到 MATLAB 波形生成。原授时／差动保护演示继续按原逻辑工作。没有 SDR 控制或真实射频发射。
+当前优化分支：`feat/timing-wireless-ui-warmup`。上一版已验证版本保留为标签 `timing-wireless-v1`（`bc9ee49`）和原分支 `feat/timing-wireless-capture`。本功能仅接入变电站授时攻击场景，使用 MATLAB R2024a 生成仿真 I/Q，无 SDR 或实际射频发射。
 
-## Windows R2024a 使用
+## Windows 使用
 
-1. 在仓库根目录使用原命令启动 Python 服务，例如：
+在 `D:\2030\Re2030` 启动原来的 Python 服务：
 
-   ```powershell
-   python main.py --ui --scenario scenarios/substation-live.json --output runs --port 8000
-   ```
+```powershell
+python main.py --ui --scenario scenarios/substation-live.json --output runs --port 8000
+```
 
-2. 加载“变电站授时攻击场景”，点选攻击节点附近的检测节点。
-3. 勾选启用无线采集，填写 MATLAB R2024a 的完整可执行路径，例如 `C:\Program Files\MATLAB\R2024a\bin\matlab.exe`。程序会尝试检测该默认安装位置，非默认位置需自行填写。
-4. 选择可写的本地绝对保存目录，例如 `D:\2030\captures`，点击保存设置。“浏览文件夹”使用本机 Windows 目录选择窗口，可能出现在浏览器后方。
-5. 在攻击节点点击“开始攻击”。MATLAB 异步初始化和计算，检测面板实时显示排队、初始化、采样及分片文件状态。MATLAB 启动和模型初始化可能耗时，并不代表已产生样本。
-6. 点击“结束攻击”后停止继续生成；程序完成最后一片、校验和索引，然后排队分析。检测面板也有单独“请求停止采集”按钮，只停止采集，不更改已在进行的授时演示攻击。
-7. 点“打开本轮文件夹”可在运行 Python 的 Windows 电脑上打开检测目录。原始 I/Q 不通过浏览器传送；图像和小型 JSON 可在面板查看。
+1. 加载“变电站授时攻击场景”，打开检测节点。
+2. 首次使用勾选“启用无线采集”，填写 MATLAB 可执行路径和可写的绝对保存目录，保存设置。“浏览文件夹”和“打开本轮文件夹”操作的是运行 Python 服务的本地 Windows 电脑。
+3. 显示“接收装置准备中”，随后显示“接收装置已就绪”。若已有启用的有效配置，加载场景后自动准备。
+4. 就绪后在攻击节点手动开始攻击。准备中点击会提示“相关装置启动中，请稍后”，本次攻击不会启动，也不会延迟自动触发。
+5. 首个 0.05 秒分片完整关闭后，独立进程开始分析；后续分片继续采集。平均功率谱先完成先显示，PRN 搜索图和相关峰局部切片随后显示。
+6. 结束攻击或请求停止采集后，停止继续生成，收尾末片并校验全部分片。图表只分析首片一次。如果结束时首片未满 0.05 秒，就分析实际关闭的短片；不足 20 毫秒时只生成平均功率谱，提示 PRN 采样不足。
+7. 下一轮攻击需等待本轮生成、收尾和分析全部完成。正常完成后两个工作进程保持常驻，无需重新启动 MATLAB。
 
-检测默认关闭，不启用时无需 MATLAB。启用时如果路径、MATLAB 或磁盘预检失败，本轮带采集的攻击不会被静默启动。进程启动、许可或运行失败会显示错误，详细日志在本轮检测目录的上级 `generation.log` / `analysis.log`，由 MATLAB 原生 `-logfile` 写入；启动器输出另外保存在 `generation_launcher.log` / `analysis_launcher.log`。Windows 调用带 `-wait`，并固定启动及脚本工作目录，避免当前目录中的旧函数遮蔽接入版本。
+仅浏览器绘制三张图，不再生成 I/Q 包络或 PNG 截图。悬停查看数值，滚轮缩放横轴，双击或按钮重置。采集状态轮询不重建已有图表，保留缩放。历史记录中的三张旧 PNG 仍可查看，I/Q 图不再展示。
 
-## 时间和生命周期
+## 准备和生命周期
 
-- 使用现实中的开始／结束操作控制生成，与推演倍速无关。现实操作时长包括启动、排队和计算，独立于实际生成的信号时长。
-- 暂停推演不会停止采集；停止推演、结束攻击或重建运行会请求停止。重建运行时，如原采集仍在收尾，页面会提示稍后再次加载，不会直接丢弃旧任务。
-- 停止采用方案 A：只保留实际已生成的样本，不补算至操作时间差。每轮每段 0.05 秒信号，末段可短于 0.05 秒，无填零。
-- 正常停止在计算块边界处理；单块的信号长度不等于计算耗时，不能保证毫秒级停止。初始化中结束可能没有有效样本，显示“未产生有效采样”。
-- 刷新浏览器不终止后台进程。页面右下角“检测任务”入口可以恢复查看已有任务、请求停止。
-- 关闭 Python 服务会发送停止请求并等待一段收尾时间。强制结束系统进程仍可能留下不完整文件；服务重新启动时旧活动任务标为中断，并发送协作停止标记，不宣称这些数据已完成。
-- 同时只接受一个生成任务。图表独立排队，整个服务同时最多启动一个 MATLAB 进程，因此遇到上一轮分析正在占用资源时，新生成任务会显示“等待计算资源”。已经通过校验的数据无需等待图表完成即可用于后续读取。
-- 每轮原始采样预算为 2 GiB，并为磁盘保留余量；接近预算时请求正常收尾，检测面板提示限制原因。默认复采样每秒约 65.47 MB，不保留重复的完整大文件。
+- 启用配置并加载授时攻击场景后，启动生成、分析两个 MATLAB 常驻进程；两者均准备完成才报告就绪。独立分析避免阻塞持续采集，会比上一版增加一个进程的内存占用。
+- 预启动只准备解释器、确定性的硬件滤波/相噪设计系数、PRN 和 FFT 等，不生成或保存攻击波形。设计缓存按全部输入配置匹配，每轮重新创建随机、滤波、导航及波形状态，不复用上轮信号。
+- 点击开始后仍有每轮模型初始化和首块计算时间；未承诺实时生成速度或首片的固定到达时间。
+- 未启用采集时不启动 MATLAB，原有授时攻击演示照常进行。
+- 现实操作时间、实际信号长度、前端推演时间相互独立。推演暂停/加速不改变采集；结束攻击、停止推演、重建运行及关闭服务请求协作停止。重建运行需等采集收尾，但不必等待已开始的首片分析。
+- 刷新浏览器不停止后台任务，右下角入口恢复本轮及历史记录；不自动重建场景或重启攻击。
+- 更改配置/禁用采集需等待生成和分析完成。修改配置后重新准备；装置启动失败后可检查日志、再次保存设置重试。
+- 正常关闭服务请求文件收尾和工作进程退出。不强杀写文件进程。服务意外退出后，工作进程通过 30 秒续期文件检查退出，生成在块边界停止；进程被强杀或机器断电仍可能留下 `.partial`。重新启动服务将未确认结束的历史任务标为中断。
+- 每轮原始数据最多 2 GiB，另保留磁盘余量；不复制完整大文件。采样率 8.184 MHz，每复样本 8 字节，完整 0.05 秒分片为 409,200 复样本、3,273,600 字节（约 3.12 MiB）。仅改存储边界，不重置连续波形。
 
-## 保存目录与信息边界
-
-每轮独立 `capture_<任务ID>/`：
+## 文件和信息边界
 
 ```text
-capture_<id>/
+capture_<任务ID>/
   detector/
-    segment_000001.iq.f32
-    ...                     # 在写文件以 .partial 结尾
-    manifest.json           # Python 校验后才生成
-    i_envelope.png          # 首片 I 分量包络
-    q_envelope.png          # 首片 Q 分量包络
-    mean_psd.png            # 首片平均功率谱
-    prn_search.png          # 首片起始 20 ms PRN 码延迟—多普勒搜索
-    correlation.png         # 相关峰局部切片
-    analysis.json           # 数值摘要／图表失败／采样不足等状态
-  private/<本轮模型目录>/   # 配置、发射机 A、真值、设计及原始分析资料
+    segment_000001.iq.f32   # 小端 float32 I0,Q0,I1,Q1,...，无头
+    ...                    # 写入中的文件以 .partial 结尾
+    manifest.json          # 全部采集收尾/校验后才就绪，含样本索引和 SHA-256
+    mean_psd.json          # 首片全部实际数据的平均功率谱数值
+    prn_search.json        # 首片起始 20 ms 延迟—多普勒相关搜索图数值
+    correlation.json       # 同一次搜索的全分辨率局部峰值切片数值
+    analysis.json          # 三张图各自状态、首片来源、PRN 证据及错误
+  private/<本轮模型目录>/  # 配置、硬件 A、内部真值等，不作为识别输入
+  first_segment.json       # 已关闭首片的内部读取快照，含私有配置
+  analysis_request.json    # 内部分析请求，仅引用首片快照
   request.json
   progress.json
   generated.json
@@ -54,49 +54,32 @@ capture_<id>/
   analysis.log
 ```
 
-`detector` 是提供给后续识别程序的目录。`manifest.json` 只有格式、采样率、请求／停止时间、实际样本数、信号时长，以及连续分片的名称、起始采样、长度、字节数和 SHA-256。没有发射机身份、硬件 A 参数、随机种子或内部真值。分片本身只保存一次；模型内部索引通过独立分片目录读取这些文件，不另复制整套 I/Q。
+`detector` 是后续识别输入目录，不含硬件 A、随机种子或模型真值；`manifest.json` 只列格式、采样率、操作时间、实际长度、连续分片索引、大小和 SHA-256。原始 I/Q 不通过浏览器下载；网页只访问白名单内的小型 JSON 和历史 PNG。首片图表完成不表示整轮识别数据已就绪，最终 `data_ready` 仍以全部文件校验为准。分析失败不撤销已通过校验的采集数据。
 
-Python 服务的任务和设置索引位于 `runs/.wireless/`（相对于启动时的 `--output`），不要把它与原始采样目录一起当成射频指纹输入。服务重启后从该索引恢复历史任务。
+搜索图在数值计算完成后按码延迟分箱取最大值压缩至最多 512 列，降低传输和绘图开销；没有改变搜索算法、阈值和数值判定。精确峰位置单独保存，局部切片保持原采样分辨率。目标 PRN 及等效接收 FIR 用于原有结构诊断与对照，不读取发射端真值延迟、多普勒或硬件身份。
 
-“数据就绪”表示文件收尾和校验已通过，与“图表完成”分开。图表失败不撤销已经完成的数据；数据不足 20 ms 时不执行默认 PRN 搜索，也不伪造相关峰。
+服务索引、设置和工作进程日志位于 `<--output>/.wireless/`。每次服务准备的工作进程使用独立会话目录 `workers/<会话ID>/{generation,analysis}/`，其中 `worker.log`、`launcher.log`、`startup_error.json` 用于启动诊断。每轮 `generation.log`、`analysis.log` 由常驻 MATLAB 的 diary 记录。
 
-图表从保存的 I/Q 读取计算。目标 PRN 是预配置搜索目标；相关峰只能说明所检窗口是否支持匹配码结构，不代表攻击者身份识别、导航电文解码或真实接收机授时欺骗已成功。
+## 修改与验证
 
-## MATLAB 修改及本地验证
+主要实现：Python `wireless_capture.py` 管理配置/首片监测/任务，`matlab_worker.py` 管理常驻进程与原子命令邮箱；MATLAB `bds_capture_worker.m` 等待任务，`bds_generate.m` 在首片关闭后发布内部读取快照，`bds_capture_analyze.m` 仅导出三份绘图数值，前端 `wireless-charts.js` 用 Canvas 绘图。没有新增工具箱依赖。
 
-附件原始包 SHA-256：`cb14ce96f2ad013bc4485a0f5685c23a4fa754a2576b27a8a0d85395f503d258`。源码保留在 `matlab/beidou_b1i/`。扩展内容：
+附件原始包 SHA-256：`cb14ce96f2ad013bc4485a0f5685c23a4fa754a2576b27a8a0d85395f503d258`，集成源码在 `matlab/beidou_b1i/`。
 
-- `bds_generate.m`：可选的协作停止／容量检查、进度、实际样本数收尾；不带 `captureControl` 的原入口保持固定时长模式。
-- `BdsFileWriter.m`：支持按实际长度完成最后一片，直接向检测目录写入；读取和校验函数支持独立分片目录，原用法兼容。
-- `bds_capture_entry.m`：默认硬件 A，关闭完整文件，写独立仿真资料目录。
-- `bds_capture_analyze.m`：从分片读取、生成概览和相关证据；只导出检测需要的图和摘要。
-- `bds_capture_stop.m`：按成功写入的样本账本判断容量，不依赖 Windows 打开文件的目录大小刷新。
-- `test_bds_capture_stop.m`：不生成波形即可检查容量边界和停止标记。
-- `test_bds_capture_control.m`：短任务停止／容量收尾、末段、分片读回及零样本测试，包含上述边界测试。
-
-在仓库根目录的 PowerShell 执行：
+本地 MATLAB 检查（调整可执行路径）：
 
 ```powershell
-& 'C:\Program Files\MATLAB\R2024a\bin\matlab.exe' -batch "addpath('matlab/beidou_b1i'); test_bds_capture_control"
-& 'C:\Program Files\MATLAB\R2024a\bin\matlab.exe' -batch "addpath('matlab/beidou_b1i'); test_bds_simulator(false); test_bds_storage(false)"
+& 'D:\Matlab\Matlab\bin\matlab.exe' -batch "addpath('D:\2030\Re2030\matlab\beidou_b1i'); test_bds_capture_control; test_bds_capture_first_segment; test_bds_capture_worker"
 ```
 
-再在界面做一次短采集，结束后核对 `manifest.json`、分片、概览和相关峰。目录选择、打开资源管理器和 MATLAB 绘图也必须在 Windows 上实际验证。
+分别检查停止/末片及首片发布、连续分片/首片读取边界/三张数值图、常驻工作循环连续接受两轮命令和退出。不需要导出图像，数值图也不需要 MATLAB 图形窗口。正常波形生成、双 MATLAB 并发启动、首片分析速度和 Windows 原生目录窗口仍须本地实测。
 
-云端没有 MATLAB：Python 单元测试使用明确的进程替身验证任务控制与数据契约，浏览器也用测试进程验证面板、刷新恢复、停止、数据就绪和不足样本提示。这些结果**不能替代 MATLAB 波形与图像实测**，未将 MATLAB 测试标成已通过。
+云端验证：
 
-Python／JavaScript 回归：
-
-```powershell
-python -m unittest tests.test_wireless_capture -v
-python -m unittest discover -s tests -t . -v
+```text
+python -m unittest discover -s tests -p test_wireless_capture.py
+python -m unittest discover -s tests -p test_matlab_worker.py
 node --test tests/*.cjs
 ```
 
-## 启动失败诊断
-
-面板的“已请求停止”只是控制请求，不代表 MATLAB 已完成退出；执行阶段另行显示是否已经进入 MATLAB 接入入口。每轮原生 MATLAB 日志包含版本、实际入口和生成器路径，以及完整错误堆栈。入口脚本还会写入 `generation_entered.json` 和（出错时）`generation_launch_error.json`。
-
-如果日志只有 `MATLAB error Exit Status`，请同时查看 `generation_launcher.log`，并确认是否存在入口标记。没有入口标记时不要把零样本解释为波形计算完成，也不能据此确定是许可还是环境问题。更新 Python 接入代码后必须重启 Python 服务，再开始新任务；旧任务的日志不会被新代码补写。
-
-展示图在采集结束后生成，全部限定于首个分片（通常 0.05 秒，409,200 复样本，3.12 MiB）。包络和平均功率谱使用首片全部实际数据；PRN 搜索及相关峰局部切片使用首片起始 20 毫秒。首片不足 20 毫秒时只生成包络及功率谱，标记 PRN 搜索采样不足。其他分片照常保存，不参与这些展示图；历史任务旧版组合图仍可查看。MATLAB 独立验证命令：`test_bds_capture_first_segment`。
+云端没有 MATLAB，进程/浏览器联调使用明确的测试替身，不能据此宣称 MATLAB 实测通过。全量 Python 回归目前有两个与本改动无关的 GOOSE 导入文件校验错误（`communication-log.jsonl`），需单独处理。

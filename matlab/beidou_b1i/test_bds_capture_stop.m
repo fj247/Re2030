@@ -13,5 +13,11 @@ assert(limit.sampleCount==2 && limit.bytes==16);
 f=fopen(cfg.captureControl.stopFile,'w');assert(f>=0);fclose(f);
 [stop,reason]=bds_capture_stop(cfg,0);
 assert(stop && strcmp(reason,'requested'));
-fprintf('Capture stop ledger checks passed.\n');
+delete(cfg.captureControl.stopFile);
+cfg.captureControl.serviceLeaseFile=fullfile(root,'LEASE');
+[stop,reason]=bds_capture_stop(cfg,0);
+assert(stop && strcmp(reason,'service_interrupted'));
+f=fopen(cfg.captureControl.serviceLeaseFile,'w');assert(f>=0);fclose(f);
+assert(~bds_capture_stop(cfg,0));
+fprintf('Capture stop ledger and service-lease checks passed.\n');
 end

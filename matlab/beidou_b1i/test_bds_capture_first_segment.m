@@ -1,5 +1,5 @@
 function test_bds_capture_first_segment()
-%TEST_BDS_CAPTURE_FIRST_SEGMENT Native MATLAB storage/range/graphics regression.
+%TEST_BDS_CAPTURE_FIRST_SEGMENT Native MATLAB storage/range/numeric-chart regression.
 root=tempname;mkdir(root);cleanup=onCleanup(@()rmdir(root,'s')); %#ok<NASGU>
 detector=fullfile(root,'detector');mkdir(detector);
 cfg=bds_default_config();cfg.segmentSeconds=0.05;cfg.keepFullFile=false;
@@ -30,7 +30,7 @@ catch
     rejected=true;
 end
 assert(rejected,'First-segment view permitted reading beyond its boundary.');
-% A <20 ms capture must still publish three separate overview figures.
+% A <20 ms capture must publish numeric PSD, without graphics or PRN results.
 short=m;short.numberComplexSamples=round(.01*fs);
 short.segments=short.segments(1);short.segments.sampleCount=short.numberComplexSamples;
 short.segments.durationSeconds=.01;short.segments.bytes=8*short.numberComplexSamples;
@@ -41,10 +41,23 @@ bds_capture_analyze(requestFile);
 a=jsondecode(fileread(fullfile(detector,'analysis.json')));
 assert(strcmp(a.overview,'saved') && strcmp(a.presence,'insufficient_samples'));
 assert(a.sourceSampleCount==short.numberComplexSamples);
-for name={'i_envelope.png','q_envelope.png','mean_psd.png'}
-    info=imfinfo(fullfile(detector,name{1}));assert(info.Width>0 && info.Height>0);
-end
+chart=jsondecode(fileread(fullfile(detector,'mean_psd.json')));
+assert(strcmp(chart.kind,'spectrum'));
+assert(numel(chart.frequencyMHz)==cfg.analysisFftLength);
+assert(all(isfinite(chart.powerDbWPerHz)));
+assert(isempty(dir(fullfile(detector,'*.png'))));
 assert(~exist(fullfile(detector,'prn_search.png'),'file'));
 assert(~exist(fullfile(detector,'overview.png'),'file'));
-fprintf('50 ms segmentation, continuous samples, first-segment bounds and short-capture figures passed.\n');
+% Analyze a complete first segment even though a later indexed file is absent.
+fullMetadata=fullfile(root,'complete-first.json');bds_capture_json(fullMetadata,m);
+bds_capture_json(requestFile,struct('taskDirectory',root,'metadataFile',fullMetadata));
+bds_capture_analyze(requestFile);
+a=jsondecode(fileread(fullfile(detector,'analysis.json')));
+assert(a.sourceSampleCount==part && ~strcmp(a.presence,'failed'));
+search=jsondecode(fileread(fullfile(detector,'prn_search.json')));
+peak=jsondecode(fileread(fullfile(detector,'correlation.json')));
+assert(size(search.scoreDb,2)<=512 && all(isfinite(search.scoreDb(:))));
+assert(numel(peak.offsetChips)==numel(peak.power));
+assert(isempty(dir(fullfile(detector,'*.png'))));
+fprintf('50 ms segmentation, continuous samples, first-segment bounds and numeric charts passed.\n');
 end
